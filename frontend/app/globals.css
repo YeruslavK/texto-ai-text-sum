@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: "Arial", sans-serif;
+  background-color: #f4f4f8;
+  color: #333;
+}
+
+.max-lines-input {
+  border-width: 3px;
+  border-color: black;
+  border-style: solid;
+  border-radius: 5px;
+  width: 100px;
+}
+
+.user-text-input {
+  border-width: 3px;
+  border-color: black;
+  border-style: solid;
+  border-radius: 5px;
+  height: 400px;
+  width: 1000px;
+  text-align: left;
+  vertical-align: top;
+  padding: 10px;
+  resize: none;
+}
+
+.title-head {
+  text-align: center;
+  font-weight: bold;
+  font-size: xx-large;
+}
+
+.filter-settings-div {
+  text-align: center;
+}
+
+.user-text-div {
+  text-align: center;
+}
