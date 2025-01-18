@@ -8,7 +8,7 @@ body {
   color: #333;
 }
 
-.max-lines-input {
+.max-words-input {
   border-width: 3px;
   border-color: black;
   border-style: solid;
@@ -17,6 +17,19 @@ body {
 }
 
 .user-text-input {
+  border-width: 3px;
+  border-color: black;
+  border-style: solid;
+  border-radius: 5px;
+  height: 400px;
+  width: 1000px;
+  text-align: left;
+  vertical-align: top;
+  padding: 10px;
+  resize: none;
+}
+
+.summarize-text-output {
   border-width: 3px;
   border-color: black;
   border-style: solid;
@@ -39,7 +52,6 @@ body {
   font-weight: 400;
   font-size: large;
 }
-
 
 .filter-settings-div {
   text-align: center;
