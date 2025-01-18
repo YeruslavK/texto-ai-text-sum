@@ -11,6 +11,7 @@ export default function Home() {
         <input type="number" className="max-lines-input" />,{" "}
         <span>Summary Style/Tone:</span>{" "}
         <select>
+
           <option value="neutral">Neutral</option>
           <option value="formal">Formal</option>
           <option value="informal">Informal</option>
@@ -20,6 +21,7 @@ export default function Home() {
         </select>{" "}
         <br />
         <button className="sum-btn">Summarize!</button>
+
       </div>{" "}
       <br />
       <div className="user-text-div">
