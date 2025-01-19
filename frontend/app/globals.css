@@ -2,69 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: "Arial", sans-serif;
-  background-color: #f4f4f8;
-  color: #333;
+@layer base {
+  body {
+    @apply font-sans bg-gray-100 text-gray-700;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold;
+  }
+  h1 {
+    @apply text-4xl;
+  }
+  h2 {
+    @apply text-2xl;
+  }
 }
 
-.max-words-input {
-  border-width: 3px;
-  border-color: black;
-  border-style: solid;
-  border-radius: 5px;
-  width: 100px;
-}
-
-.user-text-input {
-  border-width: 3px;
-  border-color: black;
-  border-style: solid;
-  border-radius: 5px;
-  height: 400px;
-  width: 1000px;
-  text-align: left;
-  vertical-align: top;
-  padding: 10px;
-  resize: none;
-}
-
-.summarize-text-output {
-  border-width: 3px;
-  border-color: black;
-  border-style: solid;
-  border-radius: 5px;
-  height: 400px;
-  width: 1000px;
-  text-align: left;
-  vertical-align: top;
-  padding: 10px;
-  resize: none;
-}
-
-.title-head {
-  text-align: center;
-  font-weight: bold;
-  font-size: xx-large;
-}
-.sub-title-head {
-  text-align: center;
-  font-weight: 400;
-  font-size: large;
-}
-
-.filter-settings-div {
-  text-align: center;
-}
-
-.sum-btn {
-  border-width: 3px;
-  border-color: black;
-  border-style: solid;
-  border-radius: 5px;
-  width: 100px;
-}
-
-.user-text-div {
-  text-align: center;
-}
+/* Add other global styles here if needed */
