@@ -1,106 +1,149 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from transformers import BartTokenizer, BartForConditionalGeneration
 from fastapi.middleware.cors import CORSMiddleware
-from sklearn.feature_extraction.text import TfidfVectorizer
-from nltk.tokenize import sent_tokenize, word_tokenize
 import nltk
 import logging
+import torch
+import random
 
-# Download the sentence tokenizer data (if you haven't already)
-nltk.download('punkt')
-# Download english stop words (if you haven't already)
-nltk.download('stopwords')
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+# Expanded CORS configuration
 origins = [
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
-# Load pre-trained BART model and tokenizer
-model_name = "facebook/bart-large-cnn" # Using a model fine tuned for summarization
-tokenizer = BartTokenizer.from_pretrained(model_name)
-model = BartForConditionalGeneration.from_pretrained(model_name)
+# Global variables for model and tokenizer
+model = None
+tokenizer = None
 
-# Pydantic model for request body validation
+# Initialize model with error handling
+def initialize_model():
+    global model, tokenizer
+    try:
+        model_name = "facebook/bart-large-cnn"
+        tokenizer = BartTokenizer.from_pretrained(model_name)
+        model = BartForConditionalGeneration.from_pretrained(model_name)
+
+        # Move model to GPU if available
+        if torch.cuda.is_available():
+            model = model.to('cuda')
+            logger.info("Model loaded on GPU")
+        else:
+            logger.info("Model loaded on CPU")
+
+    except Exception as e:
+        logger.error(f"Failed to load model: {e}")
+        raise RuntimeError(f"Model initialization failed: {e}")
+
+# Initialize model at startup
+initialize_model()
+
 class SummarizationRequest(BaseModel):
     text: str
-    maxWords: int = Field(default=0, ge=0)
-    summaryStyle: str = "neutral"
+    length: str = Field(default="medium")  # Add length parameter
 
-def score_sentences_tfidf(text, max_words):
-    """Scores sentences using TF-IDF and selects the top sentences up to max_words."""
-
-    sentences = sent_tokenize(text)
-    if not sentences:
-        return ""
-
-    # Calculate TF-IDF scores
-    vectorizer = TfidfVectorizer(tokenizer=word_tokenize, stop_words='english')
-    tfidf_matrix = vectorizer.fit_transform(sentences)
-
-    # Calculate sentence scores (sum of TF-IDF scores for words in each sentence)
-    sentence_scores = tfidf_matrix.sum(axis=1)
-
-    # Create a list of (score, sentence) tuples
-    scored_sentences = list(zip(sentence_scores, sentences))
-
-    # Sort sentences by score in descending order
-    scored_sentences.sort(reverse=True)
-
-    # Select sentences until word limit is reached
-    summary = ""
-    word_count = 0
-    for _, sentence in scored_sentences:  # Remove 'score'
-        words = word_tokenize(sentence)
-        sentence_word_count = len(words)
-        if word_count + sentence_word_count <= max_words:
-            summary += sentence + " "
-            word_count += sentence_word_count
-        else:
-            break  # Exit the loop if adding the next sentence exceeds the limit
-
-    return summary.strip()
+    @validator('text')
+    def validate_text(cls, v):
+        if not v.strip():
+            raise ValueError("Text cannot be empty")
+        if len(v) > 50000:  # Limit text length
+            raise ValueError("Text is too long (max 50000 characters)")
+        return v
 
 @app.post("/summarize")
 async def summarize_text(request_body: SummarizationRequest):
     try:
+        if not model or not tokenizer:
+            raise HTTPException(status_code=500, detail="Model not properly initialized")
+
         text = request_body.text
-        max_words = request_body.maxWords
-        summary_style = request_body.summaryStyle
+        length = request_body.length
+
+        logger.info(f"Processing text of length: {len(text)}, length setting: {length}")
+
+        # --- Dynamic max_length calculation ---
+        tokens_per_word = 1.3
+
+        # Define length presets
+        if length == "short":
+            min_length = 30  # Define minimum length for short summaries
+            max_length = int(70 * tokens_per_word)  # 70 words
+        elif length == "medium":
+            min_length = 70  # Define minimum length for medium summaries
+            max_length = int(150 * tokens_per_word)  # 150 words
+        elif length == "long":
+            min_length = 150  # Define minimum length for long summaries
+            max_length = int(250 * tokens_per_word)  # 250 words
+        else:
+            min_length = 70
+            max_length = int(150 * tokens_per_word)  # Default
 
         inputs = tokenizer(text, return_tensors="pt", max_length=1024, truncation=True)
-        logging.info(f"Tokenized inputs: {inputs}")
+        if torch.cuda.is_available():
+            inputs = {k: v.to('cuda') for k, v in inputs.items()}
 
-        # Estimate max_length based on max_words 
-        max_length = int(max_words * 1.25) if max_words > 0 else 150
+        # --- Introduce Randomness ---
+        # 1. Top-k Sampling
+        top_k = random.randint(40, 60)  # Now between 40 and 60
 
-        # Generate summary
+        # 2. Temperature Scaling
+        temperature = random.uniform(0.8, 1.2)  # Now between 0.8 and 1.2
+
+        # 3. Nucleus (Top-p) Sampling
+        top_p = random.uniform(0.8, 0.95)  # Now between 0.8 and 0.95
+
+        # 4. Randomly adjust length penalty within a narrower range
+        length_penalty = random.uniform(1.0, 2.0) # From 1.0 and 2.0
+
+        # 5. num_beams - Reduce to limit resource usage
+        num_beams = random.randint(2, 4) # Between 2 and 4
+
+        # 6. Set seed for varied outputs
+        random.seed()
+
         summary_ids = model.generate(
             inputs.input_ids,
-            num_beams=4,
+            num_beams=num_beams,
+            min_length=min_length,
             max_length=max_length,
-            early_stopping=True
+            early_stopping=True,
+            no_repeat_ngram_size=3,
+            length_penalty=length_penalty,
+            top_k=top_k,
+            temperature=temperature,
+            top_p=top_p,
+            do_sample=True  # Enable sampling
         )
-        summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
-        # Post-process using TF-IDF sentence scoring if max_words is set
-        if max_words > 0:
-            summary = score_sentences_tfidf(summary, max_words)
+        summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+        logger.info("Summary generated by BART model")
 
         return {"summary": summary}
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
+        logger.error(f"Unexpected error during summarization: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

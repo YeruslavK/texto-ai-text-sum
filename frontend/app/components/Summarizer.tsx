@@ -15,12 +15,13 @@ function Summarizer(): JSX.Element {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [maxWords, setMaxWords] = useState<number>(50);
-  const [summaryStyle, setSummaryStyle] = useState<string>("neutral");
+  const [length, setLength] = useState<string>("medium");
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
+    setSummary("");
 
     try {
       const response = await fetch("http://127.0.0.1:8000/summarize", {
@@ -28,7 +29,7 @@ function Summarizer(): JSX.Element {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text, maxWords, summaryStyle }),
+        body: JSON.stringify({ text, maxWords, length }),
       });
 
       if (!response.ok) {
@@ -66,43 +67,22 @@ function Summarizer(): JSX.Element {
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label
-              htmlFor="maxWords"
+              htmlFor="length"
               className="block text-gray-700 font-medium mb-2"
             >
-              Maximum number of words:
-            </label>
-            <input
-              type="number"
-              id="maxWords"
-              className="w-full md:w-1/4 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              min={1}
-              value={maxWords}
-              onChange={(e) => setMaxWords(Number(e.target.value))}
-            />
-          </div>
-
-          {/* Need to implement select later */}
-          {/* <div className="mb-4">
-            <label
-              htmlFor="summaryStyle"
-              className="block text-gray-700 font-medium mb-2"
-            >
-              Summary Style/Tone:
+              Summary Length:
             </label>
             <select
-              id="summaryStyle"
+              id="length"
               className="w-full md:w-1/2 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={summaryStyle}
-              onChange={(e) => setSummaryStyle(e.target.value)}
+              value={length}
+              onChange={(e) => setLength(e.target.value)}
             >
-              <option value="neutral">Neutral</option>
-              <option value="formal">Formal</option>
-              <option value="informal">Informal</option>
-              <option value="bullet-points">Bullet Points</option>
-              <option value="single-paragraph">Single Paragraph</option>
-              <option value="original-text-order">Original Text Order</option>
+              <option value="short">Short</option>
+              <option value="medium">Medium</option>
+              <option value="long">Long</option>
             </select>
-          </div> */}
+          </div>
 
           <div className="mb-4">
             <label
@@ -140,7 +120,7 @@ function Summarizer(): JSX.Element {
             </h2>
             <textarea
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[200px]"
-              defaultValue={summary}
+              value={summary}
               readOnly
             />
           </div>
