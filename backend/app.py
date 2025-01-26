@@ -60,13 +60,14 @@ initialize_model()
 
 class SummarizationRequest(BaseModel):
     text: str
-    length: str = Field(default="medium")  # Add length parameter
+    length: str = Field(default="medium")
+    temperature: float = Field(default=1.0, ge=0.0, le=2.0)
 
     @validator('text')
     def validate_text(cls, v):
         if not v.strip():
             raise ValueError("Text cannot be empty")
-        if len(v) > 50000:  # Limit text length
+        if len(v) > 50000:
             raise ValueError("Text is too long (max 50000 characters)")
         return v
 
@@ -78,45 +79,50 @@ async def summarize_text(request_body: SummarizationRequest):
 
         text = request_body.text
         length = request_body.length
+        temperature = request_body.temperature
 
-        logger.info(f"Processing text of length: {len(text)}, length setting: {length}")
+        logger.info(f"Processing text of length: {len(text)}, length setting: {length}, temperature: {temperature}")
+
+        # --- Prompt Engineering ---
+        prompt_prefix = "Summarize the following text, focusing on the main ideas and using only information found in the text. Do not add any external information or make up details: "
+        text_with_prompt = prompt_prefix + text
 
         # --- Dynamic max_length calculation ---
         tokens_per_word = 1.3
 
         # Define length presets
         if length == "short":
-            min_length = 30  # Define minimum length for short summaries
-            max_length = int(70 * tokens_per_word)  # 70 words
+            min_length = 30
+            max_length = int(70 * tokens_per_word)
         elif length == "medium":
-            min_length = 70  # Define minimum length for medium summaries
-            max_length = int(150 * tokens_per_word)  # 150 words
+            min_length = 70
+            max_length = int(150 * tokens_per_word)
         elif length == "long":
-            min_length = 150  # Define minimum length for long summaries
-            max_length = int(250 * tokens_per_word)  # 250 words
+            min_length = 150
+            max_length = int(250 * tokens_per_word)
         else:
             min_length = 70
             max_length = int(150 * tokens_per_word)  # Default
 
-        inputs = tokenizer(text, return_tensors="pt", max_length=1024, truncation=True)
+        inputs = tokenizer(text_with_prompt, return_tensors="pt", max_length=1024, truncation=True)
         if torch.cuda.is_available():
             inputs = {k: v.to('cuda') for k, v in inputs.items()}
 
         # --- Introduce Randomness ---
         # 1. Top-k Sampling
-        top_k = random.randint(40, 60)  # Now between 40 and 60
+        top_k = random.randint(40, 60)
 
-        # 2. Temperature Scaling
-        temperature = random.uniform(0.8, 1.2)  # Now between 0.8 and 1.2
+        # 2. Temperature Scaling (using value from the request)
+        # Now using temperature from the request
 
         # 3. Nucleus (Top-p) Sampling
-        top_p = random.uniform(0.8, 0.95)  # Now between 0.8 and 0.95
+        top_p = random.uniform(0.8, 0.95)
 
         # 4. Randomly adjust length penalty within a narrower range
-        length_penalty = random.uniform(1.0, 2.0) # From 1.0 and 2.0
+        length_penalty = random.uniform(1.0, 2.0)
 
         # 5. num_beams - Reduce to limit resource usage
-        num_beams = random.randint(2, 4) # Between 2 and 4
+        num_beams = random.randint(2, 4)
 
         # 6. Set seed for varied outputs
         random.seed()
@@ -130,9 +136,9 @@ async def summarize_text(request_body: SummarizationRequest):
             no_repeat_ngram_size=3,
             length_penalty=length_penalty,
             top_k=top_k,
-            temperature=temperature,
+            temperature=temperature,  # Use temperature here
             top_p=top_p,
-            do_sample=True  # Enable sampling
+            do_sample=True
         )
 
         summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)

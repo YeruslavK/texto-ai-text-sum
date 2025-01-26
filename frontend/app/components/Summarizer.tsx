@@ -16,6 +16,7 @@ function Summarizer(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [maxWords, setMaxWords] = useState<number>(50);
   const [length, setLength] = useState<string>("medium");
+  const [temperature, setTemperature] = useState<number>(1.0);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -29,7 +30,7 @@ function Summarizer(): JSX.Element {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text, maxWords, length }),
+        body: JSON.stringify({ text, maxWords, length, temperature }),
       });
 
       if (!response.ok) {
@@ -82,6 +83,29 @@ function Summarizer(): JSX.Element {
               <option value="medium">Medium</option>
               <option value="long">Long</option>
             </select>
+          </div>
+
+          {/* Temperature Slider */}
+          <div className="mb-4">
+            <label
+              htmlFor="temperature"
+              className="block text-gray-700 font-medium mb-2"
+            >
+              Temperature (0.0 - 2.0):
+            </label>
+            <input
+              type="range"
+              id="temperature"
+              min="0.0"
+              max="2.0"
+              step="0.1"
+              value={temperature}
+              onChange={(e) => setTemperature(parseFloat(e.target.value))}
+              className="w-full"
+            />
+            <output htmlFor="temperature" className="text-gray-700">
+              {temperature}
+            </output>
           </div>
 
           <div className="mb-4">
