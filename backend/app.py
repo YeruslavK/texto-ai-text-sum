@@ -46,7 +46,7 @@ tokenizer = None
 def initialize_model():
     global model, tokenizer
     try:
-        model_name = "facebook/bart-large-cnn"
+        model_name = "facebook/bart-base"
         tokenizer = BartTokenizer.from_pretrained(model_name)
         model = BartForConditionalGeneration.from_pretrained(model_name)
 
