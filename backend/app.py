@@ -6,6 +6,8 @@ import nltk
 import logging
 import torch
 import random
+import os  # Import os to use environment variables
+import uvicorn  # Import uvicorn for running the app
 
 # Configure logging
 logging.basicConfig(
@@ -15,6 +17,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"message": "FastAPI is running on Render!"}
 
 # Expanded CORS configuration
 origins = [
@@ -44,9 +50,8 @@ def initialize_model():
         tokenizer = BartTokenizer.from_pretrained(model_name)
         model = BartForConditionalGeneration.from_pretrained(model_name)
 
-        # Move model to GPU if available
         if torch.cuda.is_available():
-            model = model.to('cpu')
+            model = model.to('cuda')
             logger.info("Model loaded on GPU")
         else:
             logger.info("Model loaded on CPU")
@@ -90,7 +95,6 @@ async def summarize_text(request_body: SummarizationRequest):
         # --- Dynamic max_length calculation ---
         tokens_per_word = 1.3
 
-        # Define length presets
         if length == "short":
             min_length = 30
             max_length = int(70 * tokens_per_word)
@@ -102,29 +106,16 @@ async def summarize_text(request_body: SummarizationRequest):
             max_length = int(250 * tokens_per_word)
         else:
             min_length = 70
-            max_length = int(150 * tokens_per_word)  # Default
+            max_length = int(150 * tokens_per_word) 
 
         inputs = tokenizer(text_with_prompt, return_tensors="pt", max_length=1024, truncation=True)
         if torch.cuda.is_available():
             inputs = {k: v.to('cuda') for k, v in inputs.items()}
 
-        # --- Introduce Randomness ---
-        # 1. Top-k Sampling
         top_k = random.randint(40, 60)
-
-        # 2. Temperature Scaling (using value from the request)
-        # Now using temperature from the request
-
-        # 3. Nucleus (Top-p) Sampling
         top_p = random.uniform(0.8, 0.95)
-
-        # 4. Randomly adjust length penalty within a narrower range
         length_penalty = random.uniform(1.0, 2.0)
-
-        # 5. num_beams - Reduce to limit resource usage
         num_beams = random.randint(2, 4)
-
-        # 6. Set seed for varied outputs
         random.seed()
 
         summary_ids = model.generate(
@@ -136,7 +127,7 @@ async def summarize_text(request_body: SummarizationRequest):
             no_repeat_ngram_size=3,
             length_penalty=length_penalty,
             top_k=top_k,
-            temperature=temperature,  # Use temperature here
+            temperature=temperature,  
             top_p=top_p,
             do_sample=True
         )
@@ -153,5 +144,5 @@ async def summarize_text(request_body: SummarizationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000)) 
+    uvicorn.run(app, host="0.0.0.0", port=port)
