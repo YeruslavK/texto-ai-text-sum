@@ -46,7 +46,7 @@ def initialize_model():
 
         # Move model to GPU if available
         if torch.cuda.is_available():
-            model = model.to('cuda')
+            model = model.to('cpu')
             logger.info("Model loaded on GPU")
         else:
             logger.info("Model loaded on CPU")
